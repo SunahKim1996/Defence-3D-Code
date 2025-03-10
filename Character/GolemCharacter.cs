@@ -20,13 +20,19 @@ public class GolemCharacter : Character
         targetMonster.Damage(data.Power);
     }
 
+    public override void ChangeTraceState()
+    {
+        base.ChangeTraceState();
+        animator.SetTrigger("idle");
+    }
+
     // Start is called before the first frame update
     void Start()
     {
         data.Index = 2;
         data.Power = 20;
         data.AttackSpeed = 2;
-        data.AttackRange = 4;
+        data.AttackRange = 2;
         data.Level = 1;
 
         animator = GetComponent<Animator>();

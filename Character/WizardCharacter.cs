@@ -25,6 +25,12 @@ public class WizardCharacter : Character
         bullet.SetPower(data.Power);
     }
 
+    public override void ChangeTraceState()
+    {
+        base.ChangeTraceState();
+        animator.SetTrigger("idle");
+    }
+
     // Start is called before the first frame update
     void Start()
     {

@@ -31,13 +31,19 @@ public class WarrirorCharacter : Character
         targetMonster.Damage(data.Power);
     }
 
+    public override void ChangeTraceState()
+    {
+        base.ChangeTraceState();
+        animator.SetTrigger("idle");
+    }
+
     // Start is called before the first frame update
     void Start()
     {
         data.Index = 0;
         data.Power = 10;
         data.AttackSpeed = 1;
-        data.AttackRange = 5;
+        data.AttackRange = 3;
         data.Level = 1;
 
         animator = GetComponent<Animator>();

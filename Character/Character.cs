@@ -29,6 +29,13 @@ public class CharacterData
     }
 }
 
+public enum CharacterState
+{
+    Idle, 
+    Trace,
+    Attack,
+}
+
 public abstract class Character : MonoBehaviour
 {
     public CharacterData data = new CharacterData();
@@ -36,15 +43,15 @@ public abstract class Character : MonoBehaviour
 
     protected private Animator animator;
     private Monster targetMonster = null;
-    //private List<Monster> monsterList = new List<Monster>();
 
-    [HideInInspector] public int[] upgradePriceList = { 50, 60, 100 };
+    [SerializeField] private CharacterState charState = CharacterState.Idle;
 
     // Update is called once per frame
     void Update()
     {
         if (GameManager.Instance.gameState != GameState.Game)
             return;
+                
 
         /*
          Collider[] colls = Physics.OverlapSphere(transform.position, data.AttackRange);
@@ -82,10 +89,7 @@ public abstract class Character : MonoBehaviour
         }
          */ //LEGACY
 
-        Collider[] colls = Physics.OverlapSphere(transform.position, data.AttackRange);
-        attackTimer += Time.deltaTime;
-
-        //Collider collider = null;
+        Collider[] colls = Physics.OverlapSphere(transform.position, data.AttackRange);        
         bool isInTargetMonster = false;
 
         for (int i = 0; i < colls.Length; i++)
@@ -96,13 +100,6 @@ public abstract class Character : MonoBehaviour
                 targetMonster = colls[i].GetComponent<Monster>();
                 isInTargetMonster = true; 
 
-                //공격 처리
-                if (attackTimer >= data.AttackSpeed)
-                {
-                    attackTimer = 0;
-                    AttackAnimation();
-                }
-
                 break;
             }                
         }
@@ -110,26 +107,72 @@ public abstract class Character : MonoBehaviour
         if (!isInTargetMonster)
             targetMonster = null;
 
-        if (targetMonster == null)
+        if (charState != CharacterState.Attack)
         {
-            IdleAnimation();
-            return;
-        }
-        //해당 몬스터 바라보기
-        else
-        {
-            try
+            attackTimer += Time.deltaTime;
+
+            if (targetMonster == null)
+                ChangeIdleState();
+
+            //공격 처리
+            else if (attackTimer >= data.AttackSpeed)
             {
-                Transform targetTrans = targetMonster.transform;
-                transform.LookAt(targetTrans, Vector3.up);
+                Debug.Log("공격 처리");
+                attackTimer = 0;
+                ChangeAttackState();
             }
-            catch (MissingReferenceException e)
-            {
-                Debug.Log(e);
-                //monsterList[0] 이 missing 인 경우에는 위 코드가 실행되지 않게 처리 
-            }
+
+            //해당 몬스터 바라보기
+            else
+                ChangeTraceState();
         }
     }
+    
+    public void ChangeIdleState()
+    {
+        Debug.Log("Idle");
+
+        charState = CharacterState.Idle;
+        IdleAnimation();
+    }
+
+    public virtual void ChangeTraceState()
+    {
+        //Debug.Log("Trace");
+
+        try
+        {
+            charState = CharacterState.Trace;
+            LookAtTarget();
+        }
+
+        //monsterList[0] 이 missing 인 경우
+        catch (MissingReferenceException e)
+        {
+            targetMonster = null;
+            ChangeIdleState();
+            Debug.Log(e);
+        }
+    }
+    public void ChangeAttackState()
+    {
+        Debug.Log("Attack ====================");
+
+        LookAtTarget();
+
+        charState = CharacterState.Attack;
+        animator.SetTrigger("attack");
+    }
+
+    void LookAtTarget()
+    {
+        if (targetMonster == null)
+            return;
+
+        Transform targetTrans = targetMonster.transform;
+        transform.LookAt(targetTrans, Vector3.up);
+    }
+    
 
     private void OnDrawGizmosSelected()
     {
@@ -159,10 +202,12 @@ public abstract class Character : MonoBehaviour
     /// </summary>
     public void Attack()
     {
+        LookAtTarget();
+
         if (targetMonster != null)
             FireProjectile(targetMonster);
 
-        targetMonster = null;
+        //targetMonster = null;
     }
 
     /// <summary>

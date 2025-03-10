@@ -25,12 +25,18 @@ public class GunCharacter : Character
         bullet.SetPower(data.Power);
     }
 
+    public override void ChangeTraceState()
+    {
+        base.ChangeTraceState();
+        animator.SetTrigger("reload");
+    }
+
     // Start is called before the first frame update
     void Start()
     {
         data.Index = 3;
         data.Power = 2;
-        data.AttackSpeed = 0.2f;
+        data.AttackSpeed = 1.2f;
         data.AttackRange = 6;
         data.Level = 1;
 
