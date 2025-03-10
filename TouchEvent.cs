@@ -1,55 +1,96 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class TouchEvent : Singleton<TouchEvent>
 {
-    [SerializeField] private GameObject selectCharacter;
-    [SerializeField] private GameObject updateCharacter;
-
     bool isSelecting = false;
+    RaycastHit hit;
 
     // Update is called once per frame
     void Update()
     {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
+        if (GameManager.Instance.gameState != GameState.Game)
+            return;
 
-        if (isSelecting) // UI On Off ¿©ºÎ·Î ÆÇ´ÜÇÏ´Â °Íµµ °¡´É : selectCharacter.activeInHierarchy == true
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+
+        if (isSelecting) // = selectCharacter.activeInHierarchy == true
             return;
 
         if (Physics.Raycast(ray, out hit))
         {
-            if (hit.collider.tag.Equals("Pad"))
+            string padTag = GameManager.Instance.GetStringTagByEnum(Tag.Pad);
+            if (hit.collider.tag.Equals(padTag))
             {
+                // í´ë¦­ ì‹œ, ìºë¦­í„° ìƒì„± or ì—…ê·¸ë ˆì´ë“œ UI í‘œì‹œ 
                 if (Input.GetMouseButtonDown(0))
-                {
-                    UI.Instance.SpawnParent = hit.transform;
-
-                    // Ä³¸¯ÅÍ »ı¼º
-                    if (hit.transform.childCount == 0)
-                    {
-                        selectCharacter.transform.position = Camera.main.WorldToScreenPoint(
-                            hit.transform.position + new Vector3(0, 1f, 0));
-                        selectCharacter.SetActive(true);
-                    }
-
-                    // Ä³¸¯ÅÍ ¾÷±×·¹ÀÌµå 
-                    else
-                    {
-                        updateCharacter.transform.position = Camera.main.WorldToScreenPoint(
-                            hit.transform.position + new Vector3(0, 1f, 0));
-                        updateCharacter.SetActive(true);
-                    }
-
-                    isSelecting = true;
-                }
+                    SettingPad();
             }
         }
+    }
+
+    void ToggleOutlineMat(bool state, GameObject obj)
+    {
+        // í•˜ìœ„ ì˜¤ë¸Œì íŠ¸ Renderer ë„ ê²€ìƒ‰ 
+        List<Renderer> rendererList = obj.GetComponentsInChildren<Renderer>().ToList();
+        Renderer objRenderer = obj.GetComponent<Renderer>();
+
+        if (objRenderer != null)
+            rendererList.Add(objRenderer);
+
+        for (int i = 0; i < rendererList.Count; i++)
+        {
+            Renderer renderers = rendererList[i].GetComponent<Renderer>();
+            List<Material> matList = new List<Material>();
+
+            matList.AddRange(renderers.sharedMaterials);
+
+            if (state)
+                matList.Add(ResourceManager.Instance.outlineMat);
+            else
+                matList.Remove(ResourceManager.Instance.outlineMat);
+
+            renderers.materials = matList.ToArray();
+        }
+    }
+
+    void SettingPad()
+    {
+        CharacterSpawnData data = SpawnManager.Instance.GetTargetCharData(hit.transform);
+        UI.Instance.SpawnParent = hit.transform;
+        ToggleOutlineMat(true, hit.collider.gameObject);
+
+        // ìºë¦­í„° ìƒì„± UI
+        if (data == null || data.character == null)
+            UI.Instance.ShowSelectCharacterUI();
+
+        // ìºë¦­í„° ì—…ê·¸ë ˆì´ë“œ UI
+        else
+        {            
+            ToggleOutlineMat(true, data.character);
+
+            Character targetChar = data.character.GetComponent<Character>();
+            int level = targetChar.data.Level;
+            int maxLevel = targetChar.data.MaxLevel;
+            int index = targetChar.data.Index;
+
+            UI.Instance.ShowUpgradeCharacterUI(level, maxLevel, hit.transform.position);
+        }        
+
+        isSelecting = true;
     }
 
     public void EndSelecting()
     {
         isSelecting = false;
+        ToggleOutlineMat(false, hit.collider.gameObject);
+                
+        CharacterSpawnData data = SpawnManager.Instance.GetTargetCharData(hit.transform);
+
+        if (data != null)
+            ToggleOutlineMat(false, data.character);
     }
 }
