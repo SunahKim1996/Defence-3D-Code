@@ -6,11 +6,7 @@ public class ResourceManager : Singleton<ResourceManager>
 {
     [Header("Icon")]
     public Sprite coinIcon;
-
-    [Header("FX")]
-    public GameObject charSpawnFX;
-    public GameObject charUpgradeFX;
-    public GameObject castleDestroyFX;
+    public Sprite lifeIcon;
 
     [Header("Material")]
     public List<Material> rankMatList;

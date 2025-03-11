@@ -1,5 +1,3 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -11,10 +9,12 @@ public class GunCharacter : Character
     {
         base.Upgrade();
 
-        UpgradeData upgradeData = SpawnManager.Instance.charPrefabDataList[data.Index].sheetData.upgradeDatas[data.Level - 2];
-        data.Power += upgradeData.powerUpgradeValue;
-        data.AttackSpeed += upgradeData.attackSpeedUpgradeValue;
-        data.AttackRange += upgradeData.attackRangeUpgradeValue;
+        // 업그레이드 레벨에 맞는 오브젝트 보이게 처리
+        // ex 업그레이드 레벨이 2일 때 upgradeObjList 의 1 에 해당하는 데이터를 적용 
+        List<GameObject> enableObjList = upgradeObjList[data.Level - 1].objList;
+
+        for (int i = 0; i < enableObjList.Count; i++)
+            enableObjList[i].SetActive(true);
     }
 
     protected override void FireProjectile(Monster targetMonster)

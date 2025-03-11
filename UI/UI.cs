@@ -6,8 +6,6 @@ using System.Collections;
 using DG.Tweening;
 using System.Linq;
 using System;
-using static Cinemachine.DocumentationSortingAttribute;
-using Unity.Burst.CompilerServices;
 
 public class UI : Singleton<UI>
 {
@@ -19,6 +17,8 @@ public class UI : Singleton<UI>
     [SerializeField] private TMP_Text goldText;
 
     [SerializeField] private TMP_Text waveText;
+
+    [SerializeField] private Image lifeIcon;
     [SerializeField] private TMP_Text lifeText;
 
     [Header("Character Select UI")]
@@ -43,28 +43,42 @@ public class UI : Singleton<UI>
     [SerializeField] private TMP_Text noticeText;
     private Coroutine noticeCor;
 
-    [Header("Other UI")]
+    [Header("Effect UI")]
     [SerializeField] private TMP_Text damageValueText;
     [SerializeField] private Transform damageValueParent;
+    [Space(10f)]
+    [SerializeField] private GameObject goldTextEffect;
+    [SerializeField] private Transform goldEffectParent;
+    [Space(10f)]
+    [SerializeField] private GameObject lifeTextEffect;
+    [SerializeField] private Transform lifeEffectParent;
 
-    [SerializeField] private GameObject goldValueText;
-    [SerializeField] private Transform goldValueParent;
+    [Header("Other UI")]
+    [SerializeField] private GameObject repairUI;
+    [SerializeField] private Image repairUI_GoldIcon;
+    [SerializeField] private TMP_Text repairPriceText;
+
 
     void Start()
     {
         charSelectSlotList = selectCharacterUI.GetComponentsInChildren<CharSelectSlot>().ToList();
         ObjectPoolManager.Instance.Init(PoolKey.DamageValueText, damageValueParent, damageValueText.gameObject);
-        ObjectPoolManager.Instance.Init(PoolKey.GoldValueText, goldValueParent, goldValueText);
+        ObjectPoolManager.Instance.Init(PoolKey.GoldTextEffect, goldEffectParent, goldTextEffect);
+        ObjectPoolManager.Instance.Init(PoolKey.LifeTextEffect, lifeEffectParent, lifeTextEffect);
 
-        StartCoroutine(SetGoldIcon());
+        StartCoroutine(SetInitIcon());
     }
 
-    IEnumerator SetGoldIcon()
+    IEnumerator SetInitIcon()
     {
         if (ResourceManager.Instance == null)
             yield return null;
 
         goldIcon.sprite = ResourceManager.Instance.coinIcon;
+        repairUI_GoldIcon.sprite = ResourceManager.Instance.coinIcon;
+        upgradeUI_goldIcon.sprite = ResourceManager.Instance.coinIcon;
+
+        lifeIcon.sprite = ResourceManager.Instance.lifeIcon;
     }
 
     public void InitCharSelectUI()
@@ -101,7 +115,7 @@ public class UI : Singleton<UI>
     {
         goldText.text = $"{gold.ToString("#,##0")}";
     }
-    //TODO: 화면 보고 있을 때도 UPGARDE TEXT 색깔 변하도록 
+ 
     public void RefreshWaveUI(int curWave, int maxWave)
     {
         waveText.text = $"Wave {curWave} / {maxWave}";
@@ -113,7 +127,7 @@ public class UI : Singleton<UI>
         lifeText.text = $"{remainLife} / {maxLife}";
     }
 
-    // -----------------------------------------------------------------------
+    // 캐릭터 선택 UI -----------------------------------------------------------------------
     public void RefreshPriceColor_SelectUI()
     {
         if (!selectCharacterUI.activeSelf)
@@ -138,6 +152,7 @@ public class UI : Singleton<UI>
         RefreshPriceColor_SelectUI();
     }
 
+    // 캐릭터 업그레이드 UI -----------------------------------------------------------------------
     public void RefreshPriceColor_UpgradeUI()
     {
         if (!updateCharacterUI.activeSelf)
@@ -157,17 +172,33 @@ public class UI : Singleton<UI>
         charLevelText.color = (level >= maxLevel) ? Color.red : Color.black;
         upgradeButton.interactable = (level >= maxLevel) ? false : true;
 
-        int upgradePrice = SpawnManager.Instance.GetUpgradePrice(SpawnParent);
-        upgradePriceText.text = $"{upgradePrice}";
+
+        string upgradePriceString = (level >= maxLevel) ? "-" : $"{SpawnManager.Instance.GetUpgradePrice(SpawnParent)}";
+        upgradePriceText.text = upgradePriceString;
 
         updateCharacterUI.SetActive(true);
         selectCharacterUI.SetActive(false);
 
-        RefreshPriceColor_UpgradeUI();
+        if (level < maxLevel)
+            RefreshPriceColor_UpgradeUI();
+    }
+
+    // 성 수리 UI -----------------------------------------------------------------------
+    public void ToggleRepairUI(bool state)
+    {
+        repairUI.SetActive(state);
+    }
+
+    public void RefreshRepairPriceText()
+    {
+        int repairPrice = CastleManager.Instance.repairPrice;
+        int curGold = PlayerData.Instance.Gold;
+
+        repairPriceText.text = $"{repairPrice}";
+        repairPriceText.color = (curGold < repairPrice) ? Color.red : Color.black;
     }
 
     // -----------------------------------------------------------------------
-    //TODO : UI Tween 
     public void ShowNoticeUI(string text, float showTime = 1.5f)
     {
         if (noticeCor != null)
@@ -177,6 +208,12 @@ public class UI : Singleton<UI>
         }        
 
         noticeText.text = text;
+
+        noticeUI.GetComponent<RectTransform>().localScale = new Vector2(0, 1f);
+        noticeUI.transform.DOScaleX(1f, 0.5f)
+            .SetUpdate(true)
+            .SetEase(Ease.OutBack);
+
         noticeUI.SetActive(true);
 
         noticeCor = StartCoroutine(EndNoticeUI(showTime));
@@ -185,13 +222,17 @@ public class UI : Singleton<UI>
     IEnumerator EndNoticeUI(float showTime)
     {
         yield return new WaitForSecondsRealtime(showTime);
-        noticeUI.SetActive(false);
+
+        noticeUI.transform.DOScaleX(0f, 0.5f)
+            .SetUpdate(true)
+            .SetEase(Ease.InBack)
+            .OnComplete(() => noticeUI.SetActive(false));        
     }
 
     // -----------------------------------------------------------------------
     public void ShowBossUI()
     {
-        bossNoticeUI.rectTransform.anchoredPosition = new Vector3(-1000, 0, 0);
+        bossNoticeUI.rectTransform.anchoredPosition = new Vector3(-1000, -150, 0);
         bossNoticeUI.gameObject.SetActive(true);
         bossNoticeUI.transform.DOLocalMoveX(0, 1f)
             .SetEase(Ease.OutExpo)
@@ -206,7 +247,7 @@ public class UI : Singleton<UI>
             });
     }
 
-    // -----------------------------------------------------------------------
+    // Text 효과 -----------------------------------------------------------------------
     public void ShowDamageValueText(int damage, Transform targetTrans)
     {        
         Vector3 targetPos = Camera.main.WorldToScreenPoint(targetTrans.position + new Vector3(0, 1f, 0));
@@ -218,20 +259,24 @@ public class UI : Singleton<UI>
         damageValueText.SetTarget(targetTrans);
     }
 
-    public void ShowGoldValueText(int addGold)
+    public void ShowTextEffect(PoolKey poolKey, int addValue, Sprite icon, float heightDis)
     {
-        //Vector3 targetPos = goldIcon.rectTransform.position - new Vector3(60f, -50f, 0);
-        GameObject valueText = ObjectPoolManager.Instance.ShowObjectPool(PoolKey.GoldValueText, goldValueParent.position, Quaternion.identity);
+        Transform targetParent = (poolKey == PoolKey.GoldTextEffect) ? goldEffectParent : lifeEffectParent;
+        GameObject valueText = ObjectPoolManager.Instance.ShowObjectPool(poolKey, targetParent.position, Quaternion.identity);
         valueText.GetComponent<RectTransform>().anchoredPosition = Vector3.zero;
-        //valueText.GetComponent<RectTransform>().position = targetPos;
 
-        valueText.GetComponent<GoldValueText>().SetText(addGold);
+        TextEffect effect = valueText.GetComponent<TextEffect>();
+        effect.SetText(addValue);
+        effect.SetIcon(icon);
+        effect.SetPoolKey(poolKey);
+        effect.SetHeightDis(heightDis);
+
+        effect.EffectStart();
     }
 
     public Sequence GetTextSequence(Transform target, float duration, float targetY, Action endAction, TMP_Text valueText = null, Image icon = null)
     {
         Sequence textSequence = DOTween.Sequence()
-            .SetAutoKill(false)
 
             // 위로 이동 
             .OnStart(() =>
@@ -240,8 +285,6 @@ public class UI : Singleton<UI>
                     .SetEase(Ease.OutQuad)
                     .SetUpdate(true);
             })
-
-            
             .OnComplete(() => endAction());
 
         // 투명도 0 적용 

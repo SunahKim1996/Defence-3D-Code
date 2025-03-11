@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class CharacterData
@@ -45,6 +46,15 @@ public abstract class Character : MonoBehaviour
     private Monster targetMonster = null;
 
     [SerializeField] private CharacterState charState = CharacterState.Idle;
+
+    [System.Serializable]
+    public class UpgradeObj
+    {
+        public List<GameObject> objList;
+    }
+
+    [SerializeField] protected List<UpgradeObj> upgradeObjList;
+    [SerializeField] protected List<GolemCharacter> golemPrefabList;
 
     // Update is called once per frame
     void Update()
@@ -117,7 +127,6 @@ public abstract class Character : MonoBehaviour
             //공격 처리
             else if (attackTimer >= data.AttackSpeed)
             {
-                Debug.Log("공격 처리");
                 attackTimer = 0;
                 ChangeAttackState();
             }
@@ -130,16 +139,12 @@ public abstract class Character : MonoBehaviour
     
     public void ChangeIdleState()
     {
-        Debug.Log("Idle");
-
         charState = CharacterState.Idle;
         IdleAnimation();
     }
 
     public virtual void ChangeTraceState()
     {
-        //Debug.Log("Trace");
-
         try
         {
             charState = CharacterState.Trace;
@@ -156,8 +161,6 @@ public abstract class Character : MonoBehaviour
     }
     public void ChangeAttackState()
     {
-        Debug.Log("Attack ====================");
-
         LookAtTarget();
 
         charState = CharacterState.Attack;
@@ -215,19 +218,23 @@ public abstract class Character : MonoBehaviour
     /// 근거리 캐릭터 (검사, 골렘)     : 즉시 Damage 처리 
     /// </summary>
     protected abstract void FireProjectile(Monster targetMonster);
-
-    //TODO:MAX 치 예외처리
+    
+    /// <summary>
+    /// 캐릭터 업그레이드 
+    /// </summary>
     public virtual void Upgrade() 
     {
         data.Level++;
 
-        //FX
+        // FX
         Vector3 spawnPos = transform.position;
         ObjectPoolManager.Instance.ShowObjectPool(PoolKey.CharUpgradeFx, spawnPos, transform.rotation, true, 1f);
 
-        //업그레이드 수치
-        data.Power += (2 + data.Level);
-        data.AttackSpeed += (0.2f * data.Level);
-        data.AttackRange += (0.2f * data.Level);
+        // 업그레이드 수치 적용
+        // ex 업그레이드 레벨이 2일 때 sheetData 의 0 에 해당하는 데이터를 적용
+        UpgradeData upgradeData = SpawnManager.Instance.charPrefabDataList[data.Index].sheetData.upgradeDatas[data.Level - 2];
+        data.Power += upgradeData.powerUpgradeValue;
+        data.AttackSpeed += upgradeData.attackSpeedUpgradeValue;
+        data.AttackRange += upgradeData.attackRangeUpgradeValue;
     }
 }

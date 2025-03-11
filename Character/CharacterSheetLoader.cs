@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -112,6 +111,6 @@ public class CharacterSheetLoader : Singleton<CharacterSheetLoader>
 
         SpawnManager.Instance.InitCharPrefabData(characterSheetData);
 
-        Debug.Log("Shee Load Complete =================================");
+        Debug.Log("Sheet Load Complete =================================");
     }
 }

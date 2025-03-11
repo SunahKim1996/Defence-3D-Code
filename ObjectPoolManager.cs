@@ -7,9 +7,11 @@ public enum PoolKey
     CharSpawnFx,
     CharUpgradeFx,
     CastleDestroyFX,
+    MonsterDeadFX,
 
     DamageValueText,
-    GoldValueText,
+    GoldTextEffect,
+    LifeTextEffect,
 
     WizardBullet,
     GunnerBullet,

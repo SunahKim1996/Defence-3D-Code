@@ -17,6 +17,8 @@ public class CharacterPrefabData
 public class SpawnManager : Singleton<SpawnManager>
 {    
     [Header("Monster")]
+    [SerializeField] private List<MonsterData> monsterDataList;
+
     public List<GameObject> monsterList;
     public MonsterHP monsterHPUI;
     public Transform monsterHPParent;
@@ -27,10 +29,9 @@ public class SpawnManager : Singleton<SpawnManager>
 
     private int spawnCount;
     private int spawnMaxCount;
-
-    bool isBossTime = false;
-
-    [SerializeField] private List<MonsterData> monsterDataList;
+    private float waveDelayTime = 2f;
+    private float waveDelayTimer;
+    [HideInInspector] public bool isBossTime = false;
 
     [Header("Character")]
     [SerializeField] private Transform charSpawnFxParent;
@@ -41,19 +42,18 @@ public class SpawnManager : Singleton<SpawnManager>
     // 스폰된 캐릭터 정보 ( 현재 업그레이드 레벨, 현재 공격력 등)  
     [HideInInspector] public List<CharacterSpawnData> characterSpawnList = new List<CharacterSpawnData>();
 
-    [Header("Bullet")]
+
+    [Header("Bullet FX")]
     [SerializeField] private Bullet wizardBulletPrefab;
     [SerializeField] private Bullet gunnerBulletPrefab;
     [SerializeField] private GameObject golemCrackPrefab;
     [SerializeField] private GameObject swordEffectPrefab;
+
     [SerializeField] private Transform bulletParent;
     [SerializeField] private Transform swordEffectParent;
 
-    void Start()
+    private void Start()
     {
-        GameObject charSpawnFX = ResourceManager.Instance.charSpawnFX;
-        ObjectPoolManager.Instance.Init(PoolKey.CharSpawnFx, charSpawnFxParent, charSpawnFX);
-
         ObjectPoolManager.Instance.Init(PoolKey.WizardBullet, bulletParent, wizardBulletPrefab.gameObject);
         ObjectPoolManager.Instance.Init(PoolKey.GunnerBullet, bulletParent, gunnerBulletPrefab.gameObject);
         ObjectPoolManager.Instance.Init(PoolKey.GolemCrack, bulletParent, golemCrackPrefab);
@@ -108,8 +108,6 @@ public class SpawnManager : Singleton<SpawnManager>
         }
         else if (spawnCount >= spawnMaxCount)
         {
-            //TODO: Wave 사이사이 쉬는 시간
-
             // 보스 Wave 라면, 일반 몹 소환 끝난 후 보스 몹 소환 처리 
             Wave waveData = GetCurWaveData();
             if (waveData.IsBossWave)
@@ -120,8 +118,13 @@ public class SpawnManager : Singleton<SpawnManager>
             }
             else
             {
-                GameManager.Instance.Wave++;
-                SetCurWaveData();
+                waveDelayTimer += Time.deltaTime;
+
+                if (waveDelayTimer >= waveDelayTime)
+                {
+                    waveDelayTimer = 0;
+                    GameManager.Instance.ChangeNextWave();
+                }                
             }
         }
     }
@@ -147,7 +150,7 @@ public class SpawnManager : Singleton<SpawnManager>
         bool isSuccessPay = PlayerData.Instance.PayGold(spawnPrice);
         if (!isSuccessPay) 
         {
-            UI.Instance.ShowNoticeUI("소지금이 부족합니다");
+            UI.Instance.ShowNoticeUI("소지금이 부족합니다", 1f);
             return;
         }
 
@@ -167,7 +170,22 @@ public class SpawnManager : Singleton<SpawnManager>
         Vector3 spawnPos = parent.position;
         ObjectPoolManager.Instance.ShowObjectPool(PoolKey.CharSpawnFx, spawnPos, parent.rotation, true, 1f);
     }
-        
+    
+    /// <summary>
+    /// 골렘 캐릭터는 업그레이드 시 Gameobject 가 교체되어야 해서 Data 를 다음과 같이 처리
+    /// </summary>
+    public void RefreshCharacterSpawnData(GameObject originGameObject, GameObject newGameObject)
+    {
+        for (int i = 0; i < characterSpawnList.Count; i++)
+        {
+            if (characterSpawnList[i].character == originGameObject)
+            {
+                characterSpawnList[i].character = newGameObject;
+                break;
+            }
+        }
+    }
+
     public void UpgradeCharacter(Transform pad)
     {
         CharacterSpawnData data = GetTargetCharData(pad);
@@ -179,21 +197,18 @@ public class SpawnManager : Singleton<SpawnManager>
         }
 
         Character targetChar = data.character.GetComponent<Character>();
-        int level = targetChar.data.Level;
-
-        int upgradePrice = GetUpgradePrice(pad);
-        int curGold = PlayerData.Instance.Gold;
 
         // 금액 지불 
+        int upgradePrice = GetUpgradePrice(pad);
         bool isSuccessPay = PlayerData.Instance.PayGold(upgradePrice);
         if (!isSuccessPay)
         {
-            UI.Instance.ShowNoticeUI("소지금이 부족합니다");
+            UI.Instance.ShowNoticeUI("소지금이 부족합니다", 1f);
             return;
         }
 
         targetChar.Upgrade();
-        RefreshPadMat(pad, level);
+        RefreshPadMat(pad, targetChar.data.Level);
     }
 
     /// <summary>
@@ -201,7 +216,8 @@ public class SpawnManager : Singleton<SpawnManager>
     /// </summary>
     void RefreshPadMat(Transform pad, int level)
     {
-        pad.gameObject.GetComponent<MeshRenderer>().material = ResourceManager.Instance.rankMatList[level-1];
+        pad.gameObject.GetComponent<MeshRenderer>().material 
+            = ResourceManager.Instance.rankMatList[level-1];
     }
 
     // Util -----------------------------------------------------------
@@ -219,7 +235,6 @@ public class SpawnManager : Singleton<SpawnManager>
     /// <summary>
     /// 현재 레벨에서 필요한 업그레이드 비용 return 
     /// </summary>
-    /// <returns></returns>
     public int GetUpgradePrice(Transform pad)
     {
         CharacterSpawnData data = GetTargetCharData(pad.transform);

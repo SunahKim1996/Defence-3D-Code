@@ -1,7 +1,4 @@
-using System.Collections;
 using System.Collections.Generic;
-using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class Monster : MonoBehaviour
@@ -12,8 +9,10 @@ public class Monster : MonoBehaviour
     public MonsterHP HpUI { get; set; }
     private int hp;
 
+    [SerializeField] private bool isBossMonster;
     [SerializeField] private int monsterIndex;
     private MonsterData monsterData;
+       
 
     // Start is called before the first frame update
     void Start()
@@ -47,7 +46,9 @@ public class Monster : MonoBehaviour
 
             if (pointIdx >= flags.Count)
             {
-                PlayerData.Instance.Life--;
+                int damageValue = (isBossMonster) ? 3 : 1;
+                CastleManager.Instance.Life -= damageValue;
+
                 DestroyMonster();
             }                
             else
@@ -79,7 +80,14 @@ public class Monster : MonoBehaviour
         if (hp <= 0)
         {
             PlayerData.Instance.Gold += monsterData.RewardGold;
+            ObjectPoolManager.Instance.ShowObjectPool(
+                PoolKey.MonsterDeadFX, transform.position + new Vector3(0, 0.5f, 0), Quaternion.identity, true, 1f);
+
+            if (isBossMonster)
+                GameManager.Instance.ChangeNextWave();
+
             DestroyMonster();
+
             return;
         }    
         

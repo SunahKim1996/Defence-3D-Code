@@ -39,23 +39,11 @@ public class GameManager : Singleton<GameManager>
     }
 
     public List<Wave> waveData = new List<Wave>();
-
-    //FX
-    [SerializeField] private Transform charUpgradeFXParent;
-    [SerializeField] private Transform castleDestroyFXParent;
-
     [HideInInspector] public bool isSheetEndLoading = false;
 
     // Start is called before the first frame update
     void Start()
     {
-        // FX Pool 초기 세팅 
-        GameObject charUpgradeFX = ResourceManager.Instance.charUpgradeFX;
-        ObjectPoolManager.Instance.Init(PoolKey.CharUpgradeFx, charUpgradeFXParent, charUpgradeFX);
-        
-        GameObject castleDestroyFX = ResourceManager.Instance.castleDestroyFX;
-        ObjectPoolManager.Instance.Init(PoolKey.CastleDestroyFX, castleDestroyFXParent, castleDestroyFX);
-
         InitGame();
     }
 
@@ -65,31 +53,20 @@ public class GameManager : Singleton<GameManager>
         Wave = 1;
 
         PlayerData.Instance.Initialize();
+        CastleManager.Instance.Initialize();
         SpawnManager.Instance.SetCurWaveData();
-
-        RefreshCastle(0);
     }
 
     public string GetStringTagByEnum(Tag targetTag) => Enum.GetName(typeof(Tag), targetTag);
 
-    public void RefreshCastle(int castleLevel, bool isAllFalse = false)
+    public void ChangeNextWave()
     {
-        List<GameObject> castleList = ResourceManager.Instance.castleList;
-
-        for (int i = 0; i < castleList.Count; i++)
-        {
-            bool state = isAllFalse ? false : (i == castleLevel) ? true : false;
-            castleList[i].SetActive(state);
-        }
-
-        if (castleLevel <= 0)
-            return;
-
-        Vector3 pos = castleList[0].transform.position + new Vector3(0, 1.8f, 0);
-        Quaternion rot = castleList[0].transform.rotation;
-        ObjectPoolManager.Instance.ShowObjectPool(PoolKey.CastleDestroyFX, pos, rot, true, 1.5f);
+        Wave++;
+        SpawnManager.Instance.SetCurWaveData();
+        SpawnManager.Instance.isBossTime = false;
     }
 
+    //TODO : Life 닳을 때 카메라 흔들리는 연출 
     public void CameraShake(float ShakeAmount, float ShakeTime)
     {
         StartCoroutine(StartCameraShake(ShakeAmount, ShakeTime));
@@ -110,16 +87,11 @@ public class GameManager : Singleton<GameManager>
 
     public void EndGame()
     {
-        gameState = GameState.Finish;
+        gameState = GameState.Finish;        
 
-        //TODO : 패배 시 처리 (캐릭터 죽는 모션) 
-        GameManager.Instance.RefreshCastle(3, true);
-
+        // 캐릭터 사망 모션 
         List<CharacterSpawnData> characterSpawnList = SpawnManager.Instance.characterSpawnList;
-
         for (int i = 0; i < characterSpawnList.Count; i++)
-        {
             characterSpawnList[i].character.GetComponent<Animator>().SetTrigger("dead");
-        }
     }
 }

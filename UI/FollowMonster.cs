@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 // Monster 위치를 따라다니는 오브젝트들의 부모 스크립트 
