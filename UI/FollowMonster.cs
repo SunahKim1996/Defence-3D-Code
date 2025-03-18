@@ -26,8 +26,8 @@ public class FollowMonster : MonoBehaviour
         this.target = target;
     }
 
-    /// <param name="isUseHeight"></param> target 의 y 위치를 따라갈지 자신의 y 위치를 사용할지 여부 
-    /// <param name="heightOffset"></param> isUseHeight 가 true 인 경우, y 위치 Offset 설정 
+    /// <param name="isUseHeight">target 의 y 위치를 따라갈지 자신의 y 위치를 사용할지 여부</param>  
+    /// <param name="heightOffset">isUseHeight 가 true 인 경우, y 위치 Offset 설정</param>  
     public void SetHeightOffset(bool isUseHeight, Vector3 heightOffset = default)
     {
         this.isUseHeight = isUseHeight;
